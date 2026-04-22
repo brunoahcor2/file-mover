@@ -1,0 +1,112 @@
+{
+  "title": "File Mover - Observability",
+  "uid": "file-mover-dashboard",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Transfers Total",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(file_mover_transfers_total{status='success'})",
+          "legendFormat": "Success"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 2,
+      "title": "Transfer Failures",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(file_mover_transfers_total{status='failure'})",
+          "legendFormat": "Failures"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 3,
+      "title": "Processing Duration (avg)",
+      "type": "gauge",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "expr": "rate(file_mover_processing_duration_seconds_sum[5m]) / rate(file_mover_processing_duration_seconds_count[5m])",
+          "legendFormat": "Avg Duration"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "JVM Heap Usage",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "targets": [
+        {
+          "expr": "jvm_memory_used_bytes{area='heap', application='file-mover'}",
+          "legendFormat": "Heap Used"
+        },
+        {
+          "expr": "jvm_memory_max_bytes{area='heap', application='file-mover'}",
+          "legendFormat": "Heap Max"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Transfer Rate (per minute)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "targets": [
+        {
+          "expr": "rate(file_mover_transfers_total{status='success'}[1m]) * 60",
+          "legendFormat": "Success/min"
+        },
+        {
+          "expr": "rate(file_mover_transfers_total{status='failure'}[1m]) * 60",
+          "legendFormat": "Failure/min"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Application Logs",
+      "type": "logs",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 12 },
+      "targets": [
+        {
+          "datasource": "Loki",
+          "expr": "{app=\"file-mover\"}",
+          "legendFormat": ""
+        }
+      ]
+    }
+  ]
+}

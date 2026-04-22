@@ -1,0 +1,76 @@
+spring:
+  application:
+    name: file-mover
+  jackson:
+    default-property-inclusion: non_null
+    serialization:
+      write-dates-as-timestamps: false
+
+# ─── File Mover Configuration ───────────────────────────────────────────────
+file-mover:
+  source-directory: ${FILE_MOVER_SOURCE_DIR:/tmp/file-mover/source}
+  destination-directory: ${FILE_MOVER_DEST_DIR:/tmp/file-mover/destination}
+  error-directory: ${FILE_MOVER_ERROR_DIR:/tmp/file-mover/error}
+  poll-delay: ${FILE_MOVER_POLL_DELAY:5000}        # ms entre cada poll
+  move-failed: ${FILE_MOVER_MOVE_FAILED:true}
+  file-filter: ${FILE_MOVER_FILE_FILTER:.*\.txt}
+
+  validation-service:
+    url: ${VALIDATION_SERVICE_URL:http://localhost:8081}
+    path: ${VALIDATION_SERVICE_PATH:/api/v1/validate}
+    timeout-ms: ${VALIDATION_SERVICE_TIMEOUT:5000}
+    connect-timeout-ms: ${VALIDATION_SERVICE_CONNECT_TIMEOUT:2000}
+
+# ─── Apache Camel ────────────────────────────────────────────────────────────
+camel:
+  springboot:
+    name: FileMoverCamel
+    main-run-controller: true
+  metrics:
+    enable-route-policy: true
+    enable-message-history: true
+
+# ─── Actuator ────────────────────────────────────────────────────────────────
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics,camel
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: always
+      show-components: always
+    prometheus:
+      enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    export:
+      prometheus:
+        enabled: true
+  info:
+    env:
+      enabled: true
+    java:
+      enabled: true
+    os:
+      enabled: true
+
+# ─── Info ────────────────────────────────────────────────────────────────────
+info:
+  app:
+    name: ${spring.application.name}
+    version: "@project.version@"
+    description: "File mover with validation service integration"
+
+# ─── Logging ─────────────────────────────────────────────────────────────────
+logging:
+  level:
+    root: INFO
+    com.filemover: DEBUG
+    org.apache.camel: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{traceId:-}] %-5level %logger{36} - %msg%n"
+  file:
+    name: ${LOG_FILE_PATH:logs/file-mover.log}

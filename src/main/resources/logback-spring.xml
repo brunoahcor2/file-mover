@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <springProperty scope="context" name="APP_NAME"    source="spring.application.name"  defaultValue="file-mover"/>
+    <springProperty scope="context" name="LOG_FILE"    source="logging.file.name"         defaultValue="logs/file-mover.log"/>
+    <springProperty scope="context" name="LOKI_URL"    source="loki.url"                  defaultValue="http://localhost:3100/loki/api/v1/push"/>
+    <springProperty scope="context" name="LOG_LEVEL"   source="logging.level.root"        defaultValue="INFO"/>
+
+    <!-- ─── Console Appender ──────────────────────────────────────────────── -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder"
+                 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                 xsi:noNamespaceSchemaLocation="…">
+            <!-- fallback para encoder simples caso logstash não esteja disponível -->
+        </encoder>
+    </appender>
+
+    <!-- ─── Console Appender (plain) ─────────────────────────────────────── -->
+    <appender name="CONSOLE_PLAIN" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{traceId:-no-trace}] %-5level %-40logger{40} - %msg%n</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- ─── Rolling File Appender ────────────────────────────────────────── -->
+    <appender name="ROLLING_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_FILE}</file>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{traceId:-no-trace}] %-5level %-40logger{40} - %msg%n</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <!-- Rotaciona diariamente e quando atingir 50MB -->
+            <fileNamePattern>${LOG_FILE}.%d{yyyy-MM-dd}.%i.gz</fileNamePattern>
+            <maxFileSize>50MB</maxFileSize>
+            <!-- Mantém os últimos 30 dias de logs -->
+            <maxHistory>30</maxHistory>
+            <!-- Tamanho total máximo: 2GB -->
+            <totalSizeCap>2GB</totalSizeCap>
+        </rollingPolicy>
+    </appender>
+
+    <!-- ─── Loki Appender ─────────────────────────────────────────────────── -->
+    <appender name="LOKI" class="com.github.loki4j.logback.Loki4jAppender">
+        <http>
+            <url>${LOKI_URL}</url>
+        </http>
+        <format>
+            <label>
+                <pattern>app=${APP_NAME},host=${HOSTNAME},level=%level,logger=%logger{36}</pattern>
+            </label>
+            <message>
+                <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{traceId:-no-trace}] %-5level %-40logger{40} - %msg%n</pattern>
+            </message>
+            <sortByTime>true</sortByTime>
+        </format>
+        <!-- Batch de envio para o Loki -->
+        <batchMaxItems>1000</batchMaxItems>
+        <batchMaxBytes>4194304</batchMaxBytes>
+        <batchTimeoutMs>5000</batchTimeoutMs>
+    </appender>
+
+    <!-- ─── Async Wrappers ───────────────────────────────────────────────── -->
+    <appender name="ASYNC_FILE" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="ROLLING_FILE"/>
+        <queueSize>512</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+    </appender>
+
+    <appender name="ASYNC_LOKI" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="LOKI"/>
+        <queueSize>512</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+    </appender>
+
+    <!-- ─── Logger Configuration ─────────────────────────────────────────── -->
+    <logger name="com.filemover"        level="DEBUG" additivity="false">
+        <appender-ref ref="CONSOLE_PLAIN"/>
+        <appender-ref ref="ASYNC_FILE"/>
+        <appender-ref ref="ASYNC_LOKI"/>
+    </logger>
+
+    <logger name="org.apache.camel"     level="INFO"  additivity="false">
+        <appender-ref ref="CONSOLE_PLAIN"/>
+        <appender-ref ref="ASYNC_FILE"/>
+        <appender-ref ref="ASYNC_LOKI"/>
+    </logger>
+
+    <logger name="org.springframework"  level="WARN"  additivity="false">
+        <appender-ref ref="CONSOLE_PLAIN"/>
+        <appender-ref ref="ASYNC_FILE"/>
+    </logger>
+
+    <root level="${LOG_LEVEL}">
+        <appender-ref ref="CONSOLE_PLAIN"/>
+        <appender-ref ref="ASYNC_FILE"/>
+        <appender-ref ref="ASYNC_LOKI"/>
+    </root>
+</configuration>

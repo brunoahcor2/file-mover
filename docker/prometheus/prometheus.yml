@@ -1,0 +1,21 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: local
+    env: development
+
+scrape_configs:
+  - job_name: 'file-mover'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['file-mover:8080']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: '([^:]+).*'
+        replacement: '$1'
+
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']

@@ -1,0 +1,110 @@
+version: '3.9'
+
+# ─── Observability Stack: Prometheus + Grafana + Loki + Promtail ─────────────
+# Uso: docker compose up -d
+# Grafana disponível em: http://localhost:3000  (admin/admin)
+# Prometheus:            http://localhost:9090
+# Loki:                  http://localhost:3100
+
+services:
+
+  # ─── Aplicação ─────────────────────────────────────────────────────────────
+  file-mover:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: file-mover-app
+    ports:
+      - "8080:8080"
+    environment:
+      FILE_MOVER_SOURCE_DIR: /data/source
+      FILE_MOVER_DEST_DIR: /data/destination
+      FILE_MOVER_ERROR_DIR: /data/error
+      FILE_MOVER_POLL_DELAY: 5000
+      VALIDATION_SERVICE_URL: http://file-mover:8080
+      LOKI_URL: http://loki:3100/loki/api/v1/push
+      LOG_FILE_PATH: /logs/file-mover.log
+    volumes:
+      - ./data/source:/data/source
+      - ./data/destination:/data/destination
+      - ./data/error:/data/error
+      - ./logs:/logs
+    depends_on:
+      - loki
+    networks:
+      - observability
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ─── Prometheus ────────────────────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'
+      - '--web.enable-lifecycle'
+    networks:
+      - observability
+
+  # ─── Loki ──────────────────────────────────────────────────────────────────
+  loki:
+    image: grafana/loki:3.1.0
+    container_name: loki
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./docker/loki/loki-config.yml:/etc/loki/local-config.yaml:ro
+      - loki-data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - observability
+
+  # ─── Promtail (coleta logs do arquivo e envia ao Loki) ─────────────────────
+  promtail:
+    image: grafana/promtail:3.1.0
+    container_name: promtail
+    volumes:
+      - ./logs:/logs:ro
+      - ./docker/promtail/promtail-config.yml:/etc/promtail/config.yml:ro
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki
+    networks:
+      - observability
+
+  # ─── Grafana ───────────────────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:11.1.0
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+      - loki
+    networks:
+      - observability
+
+volumes:
+  loki-data:
+  grafana-data:
+
+networks:
+  observability:
+    driver: bridge
