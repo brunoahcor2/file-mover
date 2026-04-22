@@ -1,0 +1,68 @@
+# ==============================================================================
+# PROJETO JAVA - PADRÃO PROFISSIONAL
+# ==============================================================================
+
+# --- ESPECÍFICOS DO USUÁRIO ---
+/data/
+/logs/
+*.log
+
+# --- COMPILAÇÃO E OUTPUT (JAMais versionar) ---
+target/
+build/
+out/
+bin/
+*.class
+*.cljs
+*.out
+
+# --- ARQUIVOS DE EMPACOTAMENTO ---
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+# Exceção: manter o wrapper do Maven/Gradle para builds portáteis
+!**/gradle-wrapper.jar
+!**/maven-wrapper.jar
+
+# --- INTELLIJ IDEA ---
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+# Se você trabalha em time, as vezes ignora-se a pasta .idea inteira
+# ou mantém-se apenas o que for compartilhado (como code styles).
+
+# --- ECLIPSE ---
+.metadata/
+.project
+.classpath
+.settings/
+*.launch
+.factorypath
+
+# --- VISUAL STUDIO CODE ---
+.vscode/
+.history/
+
+# --- GERENCIAMENTO DE DEPENDÊNCIAS ---
+# O cache de dependências nunca deve ir ao Git
+.gradle/
+.m2/
+
+# --- SEGURANÇA E AMBIENTE (CRÍTICO) ---
+.env
+.env.local
+*.jks
+*.p12
+*.key
+*.pem
+*.pub
+
+# --- SISTEMA OPERACIONAL ---
+.DS_Store
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
