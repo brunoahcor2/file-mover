@@ -35,7 +35,8 @@
     </dependencyManagement>
 
     <dependencies>
-        <!-- Spring Boot -->
+
+        <!-- ── Spring Boot ───────────────────────────────────────────────── -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
@@ -49,8 +50,12 @@
             <artifactId>spring-boot-configuration-processor</artifactId>
             <optional>true</optional>
         </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
 
-        <!-- Apache Camel -->
+        <!-- ── Apache Camel core ─────────────────────────────────────────── -->
         <dependency>
             <groupId>org.apache.camel.springboot</groupId>
             <artifactId>camel-spring-boot-starter</artifactId>
@@ -72,37 +77,67 @@
             <artifactId>camel-micrometer-starter</artifactId>
         </dependency>
 
-        <!-- Actuator + Prometheus -->
+        <!-- ── Camel storage providers ───────────────────────────────────── -->
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-actuator</artifactId>
+            <!-- Poll nativo no S3 — versão gerenciada pelo BOM -->
+            <groupId>org.apache.camel.springboot</groupId>
+            <artifactId>camel-aws2-s3-starter</artifactId>
         </dependency>
+        <dependency>
+            <!-- Poll nativo SFTP — versão gerenciada pelo BOM -->
+            <groupId>org.apache.camel.springboot</groupId>
+            <artifactId>camel-ftp-starter</artifactId>
+        </dependency>
+        <dependency>
+            <!-- Poll nativo Azure Blob — versão gerenciada pelo BOM -->
+            <groupId>org.apache.camel.springboot</groupId>
+            <artifactId>camel-azure-storage-blob-starter</artifactId>
+        </dependency>
+
+        <!-- ── AWS SDK v2 (S3StorageAdapter) ─────────────────────────────── -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>s3</artifactId>
+            <version>2.25.40</version>
+        </dependency>
+
+        <!-- ── Azure Blob SDK (AzureBlobStorageAdapter) ──────────────────── -->
+        <dependency>
+            <groupId>com.azure</groupId>
+            <artifactId>azure-storage-blob</artifactId>
+            <version>12.25.1</version>
+        </dependency>
+
+        <!-- ── SFTP via JSch (SftpStorageAdapter) ────────────────────────── -->
+        <dependency>
+            <groupId>com.github.mwiede</groupId>
+            <artifactId>jsch</artifactId>
+            <version>0.2.17</version>
+        </dependency>
+
+        <!-- ── Observabilidade ───────────────────────────────────────────── -->
         <dependency>
             <groupId>io.micrometer</groupId>
             <artifactId>micrometer-registry-prometheus</artifactId>
         </dependency>
-
-        <!-- Loki (Logging) -->
         <dependency>
             <groupId>com.github.loki4j</groupId>
             <artifactId>loki-logback-appender</artifactId>
             <version>1.5.2</version>
         </dependency>
 
-        <!-- Lombok -->
+        <!-- ── Utilitários ───────────────────────────────────────────────── -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <optional>true</optional>
         </dependency>
-
-        <!-- Jackson -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
         </dependency>
 
-        <!-- Test -->
+        <!-- ── Testes ────────────────────────────────────────────────────── -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
@@ -113,6 +148,7 @@
             <artifactId>camel-test-spring-junit5</artifactId>
             <scope>test</scope>
         </dependency>
+
     </dependencies>
 
     <build>
@@ -131,4 +167,5 @@
             </plugin>
         </plugins>
     </build>
+
 </project>

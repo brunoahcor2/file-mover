@@ -9,27 +9,30 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
-import java.time.Duration;
-
 /**
- * Adapter que chama o serviço fake de validação de empresa via HTTP.
- * Implementa a porta de saída CompanyValidationGateway.
+ * Adapter que chama o serviço fake de validação via HTTP.
  *
- * Em caso de falha de comunicação, retorna rejeição com motivo técnico
- * para que o Camel possa acionar o Dead Letter Channel.
+ * O RestClient.Builder é injetado com timeouts pré-configurados
+ * em RestClientConfig — sem isso, uma lentidão no servidor fake
+ * pode travar o processamento indefinidamente.
+ *
+ * Logs [TIMING] emitem o tempo de cada chamada HTTP para diagnóstico.
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class FakeCompanyValidationAdapter implements CompanyValidationGateway {
 
-    private final FileMoverProperties properties;
-    private final RestClient.Builder  restClientBuilder;
+    private final FileMoverProperties  properties;
+    private final RestClient.Builder   restClientBuilder;
 
     @Override
     public CompanyValidationResult validate(String companyId) {
-        log.debug("Calling validation service | companyId={} url={}",
-                companyId, properties.getValidationService().getFullUrl());
+        long t0  = System.currentTimeMillis();
+        String url = properties.getValidationService().getUrl()
+                + properties.getValidationService().getPath();
+
+        log.info("[TIMING] fase=validation-start companyId={} url={}", companyId, url);
 
         try {
             ValidationResponse response = buildRestClient()
@@ -38,20 +41,27 @@ public class FakeCompanyValidationAdapter implements CompanyValidationGateway {
                     .retrieve()
                     .body(ValidationResponse.class);
 
+            long elapsed = System.currentTimeMillis() - t0;
+
             if (response == null) {
-                log.warn("Validation service returned null response | companyId={}", companyId);
+                log.warn("[TIMING] fase=validation-end companyId={} elapsed={}ms resultado=NULL_RESPONSE",
+                        companyId, elapsed);
                 return CompanyValidationResult.rejected(companyId, "Empty response from validation service");
             }
 
-            log.info("Validation service response | companyId={} valid={} reason={}",
-                    companyId, response.valid(), response.reason());
+            log.info("[TIMING] fase=validation-end companyId={} valid={} elapsed={}ms",
+                    companyId, response.valid(), elapsed);
 
             return response.valid()
                     ? CompanyValidationResult.approved(companyId)
                     : CompanyValidationResult.rejected(companyId, response.reason());
 
         } catch (RestClientException e) {
-            log.error("Validation service call failed | companyId={} error={}", companyId, e.getMessage());
+            long elapsed = System.currentTimeMillis() - t0;
+            log.error("[TIMING] fase=validation-error companyId={} elapsed={}ms erro={}",
+                    companyId, elapsed, e.getMessage());
+
+            // Retorna rejeição em vez de propagar — o DLC decide o destino
             return CompanyValidationResult.rejected(companyId,
                     "Validation service unavailable: " + e.getMessage());
         }
@@ -64,8 +74,5 @@ public class FakeCompanyValidationAdapter implements CompanyValidationGateway {
                 .build();
     }
 
-    /**
-     * DTO de resposta do serviço de validação.
-     */
     record ValidationResponse(String companyId, boolean valid, String reason) {}
 }

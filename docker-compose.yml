@@ -1,10 +1,15 @@
 version: '3.9'
 
-# ─── Observability Stack: Prometheus + Grafana + Loki + Promtail ─────────────
-# Uso: docker compose up -d
-# Grafana disponível em: http://localhost:3000  (admin/admin)
-# Prometheus:            http://localhost:9090
-# Loki:                  http://localhost:3100
+# ─── File Mover + Observability + LocalStack ──────────────────────────────────
+# Grafana:    http://localhost:3000  (admin/admin)
+# Prometheus: http://localhost:9090
+# Loki:       http://localhost:3100
+# LocalStack: http://localhost:4566
+#
+# Cenário ativo: S3 (LocalStack) → LOCAL | error → LOCAL
+#
+# Para trocar de cenário altere as variáveis STORAGE_*_TYPE
+# e descomente/comente as variáveis do provider desejado.
 
 services:
 
@@ -17,20 +22,81 @@ services:
     ports:
       - "8080:8080"
     environment:
+
+      # ── diretórios locais (usados quando type=LOCAL) ──────────────────────
       FILE_MOVER_SOURCE_DIR: /data/source
       FILE_MOVER_DEST_DIR: /data/destination
       FILE_MOVER_ERROR_DIR: /data/error
       FILE_MOVER_POLL_DELAY: 5000
+
+      # ── validação ─────────────────────────────────────────────────────────
       VALIDATION_SERVICE_URL: http://file-mover:8080
+
+      # ── observabilidade ───────────────────────────────────────────────────
       LOKI_URL: http://loki:3100/loki/api/v1/push
       LOG_FILE_PATH: /logs/file-mover.log
+
+      # ── storage: source (S3 → poll pelo Camel aws2-s3) ───────────────────
+      STORAGE_SOURCE_TYPE: S3
+      SOURCE_S3_BUCKET: file-mover-source
+      SOURCE_S3_REGION: us-east-1
+      SOURCE_S3_ENDPOINT: http://localstack:4566
+      SOURCE_S3_ACCESS_KEY: test
+      SOURCE_S3_SECRET_KEY: test
+      SOURCE_S3_PREFIX: incoming/
+      # SOURCE_SFTP_HOST: sftp-server
+      # SOURCE_SFTP_PORT: 22
+      # SOURCE_SFTP_USER: user
+      # SOURCE_SFTP_PASS: password
+      # SOURCE_SFTP_DIR: /upload
+
+      # ── storage: destination (LOCAL → /data/destination no container) ────
+      STORAGE_DEST_TYPE: LOCAL
+      # DEST_S3_BUCKET: file-mover-dest
+      # DEST_S3_REGION: us-east-1
+      # DEST_S3_ENDPOINT: http://localstack:4566
+      # DEST_S3_ACCESS_KEY: test
+      # DEST_S3_SECRET_KEY: test
+      # DEST_S3_PREFIX: processed/
+      # DEST_AZURE_CONN_STR: DefaultEndpointsProtocol=https;AccountName=...
+      # DEST_AZURE_CONTAINER: file-mover-dest
+      # DEST_AZURE_PREFIX: processed/
+      # DEST_SFTP_HOST: sftp-server
+      # DEST_SFTP_PORT: 22
+      # DEST_SFTP_USER: user
+      # DEST_SFTP_PASS: password
+      # DEST_SFTP_DIR: /processed
+
+      # ── storage: error (LOCAL → /data/error no container) ────────────────
+      STORAGE_ERROR_TYPE: LOCAL
+      # ERROR_S3_BUCKET: file-mover-error
+      # ERROR_S3_REGION: us-east-1
+      # ERROR_S3_ENDPOINT: http://localstack:4566
+      # ERROR_S3_ACCESS_KEY: test
+      # ERROR_S3_SECRET_KEY: test
+      # ERROR_S3_PREFIX: error/
+      # ERROR_SFTP_HOST: sftp-server
+      # ERROR_SFTP_PORT: 22
+      # ERROR_SFTP_USER: user
+      # ERROR_SFTP_PASS: password
+      # ERROR_SFTP_DIR: /error
+
+      # ── AWS SDK — credenciais e endpoint nativos (LocalStack) ─────────────
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_ENDPOINT_URL: http://localstack:4566
+      AWS_REGION: us-east-1
+
     volumes:
       - ./data/source:/data/source
       - ./data/destination:/data/destination
       - ./data/error:/data/error
       - ./logs:/logs
     depends_on:
-      - loki
+      loki:
+        condition: service_started
+      localstack:
+        condition: service_healthy
     networks:
       - observability
     healthcheck:
@@ -39,6 +105,28 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+
+  # ─── LocalStack (S3 local) ─────────────────────────────────────────────────
+  localstack:
+    image: localstack/localstack:3.4
+    container_name: localstack
+    ports:
+      - "4566:4566"
+    environment:
+      SERVICES: s3
+      DEFAULT_REGION: us-east-1
+      EAGER_SERVICE_LOADING: 1
+    volumes:
+      - ./docker/localstack/init-s3.sh:/etc/localstack/init/ready.d/init-s3.sh
+      - localstack-data:/var/lib/localstack
+    networks:
+      - observability
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
 
   # ─── Prometheus ────────────────────────────────────────────────────────────
   prometheus:
@@ -69,7 +157,7 @@ services:
     networks:
       - observability
 
-  # ─── Promtail (coleta logs do arquivo e envia ao Loki) ─────────────────────
+  # ─── Promtail ──────────────────────────────────────────────────────────────
   promtail:
     image: grafana/promtail:3.1.0
     container_name: promtail
@@ -104,6 +192,7 @@ services:
 volumes:
   loki-data:
   grafana-data:
+  localstack-data:
 
 networks:
   observability:

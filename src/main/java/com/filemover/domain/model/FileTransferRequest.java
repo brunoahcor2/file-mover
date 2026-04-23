@@ -13,11 +13,12 @@ import java.time.Instant;
 @Builder
 public class FileTransferRequest {
 
-    String fileName;
-    String sourcePath;
-    String companyId;
-    Instant receivedAt;
+    String           fileName;
+    String           sourcePath;
+    String           companyId;
+    Instant          receivedAt;
     FileTransferStatus status;
+    Long             contentLength;   // null quando o provider não fornece o tamanho
 
     public FileTransferRequest withStatus(FileTransferStatus newStatus) {
         return FileTransferRequest.builder()
@@ -26,6 +27,7 @@ public class FileTransferRequest {
                 .companyId(this.companyId)
                 .receivedAt(this.receivedAt)
                 .status(newStatus)
+                .contentLength(this.contentLength)
                 .build();
     }
 }

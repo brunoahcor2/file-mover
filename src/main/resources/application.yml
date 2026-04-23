@@ -11,7 +11,7 @@ file-mover:
   source-directory: ${FILE_MOVER_SOURCE_DIR:/tmp/file-mover/source}
   destination-directory: ${FILE_MOVER_DEST_DIR:/tmp/file-mover/destination}
   error-directory: ${FILE_MOVER_ERROR_DIR:/tmp/file-mover/error}
-  poll-delay: ${FILE_MOVER_POLL_DELAY:5000}        # ms entre cada poll
+  poll-delay: ${FILE_MOVER_POLL_DELAY:5000}
   move-failed: ${FILE_MOVER_MOVE_FAILED:true}
   file-filter: ${FILE_MOVER_FILE_FILTER:.*\.txt}
 
@@ -20,6 +20,60 @@ file-mover:
     path: ${VALIDATION_SERVICE_PATH:/api/v1/validate}
     timeout-ms: ${VALIDATION_SERVICE_TIMEOUT:5000}
     connect-timeout-ms: ${VALIDATION_SERVICE_CONNECT_TIMEOUT:2000}
+
+  # --- configuração de storage ---
+  source:
+    type: ${STORAGE_SOURCE_TYPE:LOCAL}
+    s3:
+      bucket-name: ${SOURCE_S3_BUCKET:}
+      region: ${SOURCE_S3_REGION:us-east-1}
+      endpoint: ${SOURCE_S3_ENDPOINT:}
+      access-key-id: ${SOURCE_S3_ACCESS_KEY:}
+      secret-access-key: ${SOURCE_S3_SECRET_KEY:}
+      key-prefix: ${SOURCE_S3_PREFIX:incoming/}
+    sftp:
+      host: ${SOURCE_SFTP_HOST:}
+      port: ${SOURCE_SFTP_PORT:22}
+      username: ${SOURCE_SFTP_USER:}
+      password: ${SOURCE_SFTP_PASS:}
+      remote-dir: ${SOURCE_SFTP_DIR:/upload}
+
+  destination:
+    type: ${STORAGE_DEST_TYPE:LOCAL}
+    s3:
+      bucket-name: ${DEST_S3_BUCKET:}
+      region: ${DEST_S3_REGION:us-east-1}
+      endpoint: ${DEST_S3_ENDPOINT:}
+      access-key-id: ${DEST_S3_ACCESS_KEY:}
+      secret-access-key: ${DEST_S3_SECRET_KEY:}
+      key-prefix: ${DEST_S3_PREFIX:processed/}
+    azure:
+      connection-string: ${DEST_AZURE_CONN_STR:}
+      container-name: ${DEST_AZURE_CONTAINER:}
+      key-prefix: ${DEST_AZURE_PREFIX:processed/}
+    sftp:
+      host: ${DEST_SFTP_HOST:}
+      port: ${DEST_SFTP_PORT:22}
+      username: ${DEST_SFTP_USER:}
+      password: ${DEST_SFTP_PASS:}
+      remote-dir: ${DEST_SFTP_DIR:/processed}
+
+  # ── error: mesmo padrão dos outros dois ──
+  error:
+    type: ${STORAGE_ERROR_TYPE:LOCAL}
+    s3:
+      bucket-name: ${ERROR_S3_BUCKET:}
+      region: ${ERROR_S3_REGION:us-east-1}
+      endpoint: ${ERROR_S3_ENDPOINT:}
+      access-key-id: ${ERROR_S3_ACCESS_KEY:}
+      secret-access-key: ${ERROR_S3_SECRET_KEY:}
+      key-prefix: ${ERROR_S3_PREFIX:error/}
+    sftp:
+      host: ${ERROR_SFTP_HOST:}
+      port: ${ERROR_SFTP_PORT:22}
+      username: ${ERROR_SFTP_USER:}
+      password: ${ERROR_SFTP_PASS:}
+      remote-dir: ${ERROR_SFTP_DIR:/error}
 
 # ─── Apache Camel ────────────────────────────────────────────────────────────
 camel:

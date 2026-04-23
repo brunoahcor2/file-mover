@@ -1,8 +1,10 @@
 package com.filemover.infrastructure.config;
 
+import com.filemover.infrastructure.storage.StorageType;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
@@ -37,6 +39,17 @@ public class FileMoverProperties {
     @Valid
     private ValidationService validationService = new ValidationService();
 
+    @Valid
+    private StorageConfig source      = new StorageConfig();
+
+    @Valid
+    private StorageConfig destination = new StorageConfig();
+
+    @Valid
+    private StorageConfig error       = new StorageConfig();
+
+    // ── ValidationService ──────────────────────────────────────────────────
+
     @Data
     public static class ValidationService {
 
@@ -54,6 +67,47 @@ public class FileMoverProperties {
 
         public String getFullUrl() {
             return url + path;
+        }
+    }
+
+    // ── StorageConfig ──────────────────────────────────────────────────────
+
+    @Data
+    @Validated
+    public static class StorageConfig {
+
+        @NotNull
+        private StorageType type = StorageType.LOCAL;
+
+        private S3Config    s3    = new S3Config();
+        private AzureConfig azure = new AzureConfig();
+        private SftpConfig  sftp  = new SftpConfig();
+
+        @Data
+        public static class S3Config {
+            private String bucketName;
+            private String region        = "us-east-1";
+            private String endpoint;
+            private String accessKeyId;
+            private String secretAccessKey;
+            private String keyPrefix     = "";
+        }
+
+        @Data
+        public static class AzureConfig {
+            private String connectionString;
+            private String containerName;
+            private String keyPrefix = "";
+        }
+
+        @Data
+        public static class SftpConfig {
+            private String host;
+            private int    port           = 22;
+            private String username;
+            private String password;
+            private String privateKeyPath;
+            private String remoteDir      = "/upload";
         }
     }
 }

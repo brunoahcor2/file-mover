@@ -6,5 +6,6 @@ public enum FileTransferStatus {
     VALIDATED,
     MOVING,
     COMPLETED,
-    FAILED
+    FAILED,
+    TRANSFERRED
 }
