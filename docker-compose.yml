@@ -1,145 +1,159 @@
-version: '3.9'
+  version: '3.9'
 
-# ─── File Mover Stack ────────────────────────────────────────────────────────
-# Grafana:    http://localhost:3000
-# Prometheus: http://localhost:9090
-# Azurite:    http://localhost:10000
+  # ─── File Mover Stack ────────────────────────────────────────────────────────
+  # Grafana:    http://localhost:3000
+  # Prometheus: http://localhost:9090
+  # Azurite:    http://localhost:10000
+  # LocalStack: http://localhost:4566 (S3)
+  # SFTP:       localhost:2222
 
-services:
+  services:
 
-  # ─── Aplicação Java ────────────────────────────────────────────────────────
-  file-mover:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: file-mover-app
-    ports:
-      - "8080:8080"
-    environment:
-      FILE_MOVER_SOURCE_DIR: /data/source
-      FILE_MOVER_DEST_DIR: /data/destination
-      FILE_MOVER_ERROR_DIR: /data/error
-      FILE_MOVER_POLL_DELAY: 5000
-      VALIDATION_SERVICE_URL: http://file-mover:8080
-      LOKI_URL: http://loki:3100/loki/api/v1/push
-      LOG_FILE_PATH: /logs/file-mover.log
-      STORAGE_SOURCE_TYPE: LOCAL
-      STORAGE_DEST_TYPE: AZURE_BLOB
-#      DEST_AZURE_CONN_STR: ${DEST_AZURE_CONN_STR}
-#      DEST_AZURE_CONN_STR: "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OGTHqGMDtWJ9X+mVQmBXbMJ5v3WFHb3yLbQ==;BlobEndpoint=http://azurite:10000/devstoreaccount1;"
-      DEST_AZURE_CONTAINER: file-mover-dest
-      DEST_AZURE_PREFIX: processed/
-      STORAGE_ERROR_TYPE: LOCAL
-      DEST_AZURE_CONN_STR: DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;
-    volumes:
-      - ./data:/data
-      - ./logs:/logs
-    depends_on:
-      azurite:
-        condition: service_healthy
-      loki:
-        condition: service_started
-    networks:
-      - observability
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
+    # ─── Aplicação Java ────────────────────────────────────────────────────────
+    file-mover:
+      build:
+        context: .
+        dockerfile: Dockerfile
+      container_name: file-mover-app
+      ports:
+        - "8080:8080"
+      environment:
+        FILE_MOVER_SOURCE_DIR: /data/source
+        FILE_MOVER_DEST_DIR: /data/destination
+        FILE_MOVER_ERROR_DIR: /data/error
+        FILE_MOVER_POLL_DELAY: 5000
+        VALIDATION_SERVICE_URL: http://file-mover:8080
+        LOKI_URL: http://loki:3100/loki/api/v1/push
+        LOG_FILE_PATH: /logs/file-mover.log
+        STORAGE_SOURCE_TYPE: LOCAL
+        STORAGE_DEST_TYPE: AZURE_BLOB
+        DEST_AZURE_CONTAINER: file-mover-dest
+        DEST_AZURE_PREFIX: processed/
+        STORAGE_ERROR_TYPE: LOCAL
+        DEST_AZURE_CONN_STR: "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;"
+      volumes:
+        - ./data:/data
+        - ./logs:/logs
+      depends_on:
+        azurite:
+          condition: service_healthy
+        loki:
+          condition: service_started
+      networks:
+        - observability
+      healthcheck:
+        test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+        interval: 30s
+        timeout: 10s
+        retries: 3
+        start_period: 60s
 
-  # ─── Azurite (Emulador Azure Blob Storage) ─────────────────────────────────
-  azurite:
-    image: mcr.microsoft.com/azure-storage/azurite:3.30.0
-    container_name: azurite
-    ports:
-      - "10000:10000"
-      - "10001:10001"
-      - "10002:10002"
-    command: >
-      azurite
-      --blobHost 0.0.0.0
-      --queueHost 0.0.0.0
-      --tableHost 0.0.0.0
-      --loose
-      --skipApiVersionCheck
-      --disableProductStyleUrl
-    volumes:
-      - azurite-data:/data
-    networks:
-      - observability
-    healthcheck:
-      test: ["CMD-SHELL", "echo ok"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-      start_period: 10s
+    # ─── Azurite (Emulador Azure Blob Storage) ─────────────────────────────────
+    azurite:
+      image: mcr.microsoft.com/azure-storage/azurite:3.30.0
+      container_name: azurite
+      ports:
+        - "10000:10000"
+      command: azurite --blobHost 0.0.0.0 --loose --skipApiVersionCheck --disableProductStyleUrl
+      volumes:
+        - azurite-data:/data
+      networks:
+        - observability
+      healthcheck:
+        test: ["CMD-SHELL", "echo ok"]
+        interval: 5s
+        timeout: 3s
+        retries: 5
 
-  # ─── Prometheus ────────────────────────────────────────────────────────────
-  prometheus:
-    image: prom/prometheus:v2.53.0
-    container_name: prometheus
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.enable-lifecycle'
-    networks:
-      - observability
+    # ─── LocalStack (Novo serviço na versão corrente) ──────────────────────────
+    localstack:
+      image: localstack/localstack:3.4
+      container_name: localstack
+      ports:
+        - "4566:4566"
+      environment:
+        - SERVICES=s3
+      networks:
+        - observability
+      healthcheck:
+        test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+        interval: 10s
 
-  # ─── Loki ──────────────────────────────────────────────────────────────────
-  loki:
-    image: grafana/loki:3.1.0
-    container_name: loki
-    ports:
-      - "3100:3100"
-    volumes:
-      - ./docker/loki/loki-config.yml:/etc/loki/local-config.yaml:ro
-      - loki-data:/loki
-    command: -config.file=/etc/loki/local-config.yaml
-    networks:
-      - observability
+    # ─── SFTP Server (Novo serviço na versão corrente) ──────────────────────────
+    sftp-server:
+      image: atmoz/sftp
+      container_name: sftp-server
+      ports:
+        - "2222:22"
+      command: user:pass:1001
+      networks:
+        - observability
 
-  # ─── Promtail ──────────────────────────────────────────────────────────────
-  promtail:
-    image: grafana/promtail:3.1.0
-    container_name: promtail
-    volumes:
-      - ./logs:/logs:ro
-      - ./docker/promtail/promtail-config.yml:/etc/promtail/config.yml:ro
-    command: -config.file=/etc/promtail/config.yml
-    depends_on:
-      - loki
-    networks:
-      - observability
+    # ─── Prometheus ────────────────────────────────────────────────────────────
+    prometheus:
+      image: prom/prometheus:v2.53.0
+      container_name: prometheus
+      ports:
+        - "9090:9090"
+      volumes:
+        - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      command:
+        - '--config.file=/etc/prometheus/prometheus.yml'
+        - '--storage.tsdb.path=/prometheus'
+        - '--web.enable-lifecycle'
+      networks:
+        - observability
 
-  # ─── Grafana ───────────────────────────────────────────────────────────────
-  grafana:
-    image: grafana/grafana:11.1.0
-    container_name: grafana
-    ports:
-      - "3000:3000"
-    environment:
-      GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: admin
-      GF_USERS_ALLOW_SIGN_UP: "false"
-    volumes:
-      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
-      - grafana-data:/var/lib/grafana
-    depends_on:
-      - prometheus
-      - loki
-    networks:
-      - observability
+    # ─── Loki ──────────────────────────────────────────────────────────────────
+    loki:
+      image: grafana/loki:3.1.0
+      container_name: loki
+      ports:
+        - "3100:3100"
+      volumes:
+        - ./docker/loki/loki-config.yml:/etc/loki/local-config.yaml:ro
+        - loki-data:/loki
+      command: -config.file=/etc/loki/local-config.yaml
+      networks:
+        - observability
 
-volumes:
-  azurite-data:
-  loki-data:
-  grafana-data:
+    # ─── Promtail ──────────────────────────────────────────────────────────────
+    promtail:
+      image: grafana/promtail:3.1.0
+      container_name: promtail
+      volumes:
+        - ./logs:/logs:ro
+        - ./docker/promtail/promtail-config.yml:/etc/promtail/config.yml:ro
+      command: -config.file=/etc/promtail/config.yml
+      depends_on:
+        - loki
+      networks:
+        - observability
 
-networks:
-  observability:
-    driver: bridge
+    # ─── Grafana ───────────────────────────────────────────────────────────────
+    grafana:
+      image: grafana/grafana:11.1.0
+      container_name: grafana
+      ports:
+        - "3000:3000"
+      environment:
+        GF_SECURITY_ADMIN_USER: admin
+        GF_SECURITY_ADMIN_PASSWORD: admin
+        GF_USERS_ALLOW_SIGN_UP: "false"
+      volumes:
+        - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+        - grafana-data:/var/lib/grafana
+      depends_on:
+        - prometheus
+        - loki
+      networks:
+        - observability
+
+  volumes:
+    azurite-data:
+    loki-data:
+    grafana-data:
+
+  networks:
+    observability:
+      driver: bridge
