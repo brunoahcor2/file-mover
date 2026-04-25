@@ -21,7 +21,7 @@ file-mover:
     timeout-ms: ${VALIDATION_SERVICE_TIMEOUT:5000}
     connect-timeout-ms: ${VALIDATION_SERVICE_CONNECT_TIMEOUT:2000}
 
-  # --- configuração de storage ---
+  # ── storage: source ────────────────────────────────────────────────────────
   source:
     type: ${STORAGE_SOURCE_TYPE:LOCAL}
     s3:
@@ -31,6 +31,10 @@ file-mover:
       access-key-id: ${SOURCE_S3_ACCESS_KEY:}
       secret-access-key: ${SOURCE_S3_SECRET_KEY:}
       key-prefix: ${SOURCE_S3_PREFIX:incoming/}
+    azure:
+      connection-string: ${SOURCE_AZURE_CONN_STR:}
+      container-name: ${SOURCE_AZURE_CONTAINER:}
+      key-prefix: ${SOURCE_AZURE_PREFIX:incoming/}
     sftp:
       host: ${SOURCE_SFTP_HOST:}
       port: ${SOURCE_SFTP_PORT:22}
@@ -38,6 +42,7 @@ file-mover:
       password: ${SOURCE_SFTP_PASS:}
       remote-dir: ${SOURCE_SFTP_DIR:/upload}
 
+  # ── storage: destination ───────────────────────────────────────────────────
   destination:
     type: ${STORAGE_DEST_TYPE:LOCAL}
     s3:
@@ -58,7 +63,7 @@ file-mover:
       password: ${DEST_SFTP_PASS:}
       remote-dir: ${DEST_SFTP_DIR:/processed}
 
-  # ── error: mesmo padrão dos outros dois ──
+  # ── storage: error ─────────────────────────────────────────────────────────
   error:
     type: ${STORAGE_ERROR_TYPE:LOCAL}
     s3:
@@ -68,6 +73,10 @@ file-mover:
       access-key-id: ${ERROR_S3_ACCESS_KEY:}
       secret-access-key: ${ERROR_S3_SECRET_KEY:}
       key-prefix: ${ERROR_S3_PREFIX:error/}
+    azure:
+      connection-string: ${ERROR_AZURE_CONN_STR:}
+      container-name: ${ERROR_AZURE_CONTAINER:}
+      key-prefix: ${ERROR_AZURE_PREFIX:error/}
     sftp:
       host: ${ERROR_SFTP_HOST:}
       port: ${ERROR_SFTP_PORT:22}
