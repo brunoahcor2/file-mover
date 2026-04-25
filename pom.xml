@@ -24,10 +24,19 @@
 
     <dependencyManagement>
         <dependencies>
+            <!-- Camel BOM — gerencia todas as versões camel-* -->
             <dependency>
                 <groupId>org.apache.camel.springboot</groupId>
                 <artifactId>camel-spring-boot-bom</artifactId>
                 <version>${camel.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <!-- Azure BOM — garante compatibilidade entre todos os módulos azure-* -->
+            <dependency>
+                <groupId>com.azure</groupId>
+                <artifactId>azure-sdk-bom</artifactId>
+                <version>1.2.28</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -79,36 +88,40 @@
 
         <!-- ── Camel storage providers ───────────────────────────────────── -->
         <dependency>
-            <!-- Poll nativo no S3 — versão gerenciada pelo BOM -->
             <groupId>org.apache.camel.springboot</groupId>
             <artifactId>camel-aws2-s3-starter</artifactId>
         </dependency>
         <dependency>
-            <!-- Poll nativo SFTP — versão gerenciada pelo BOM -->
             <groupId>org.apache.camel.springboot</groupId>
             <artifactId>camel-ftp-starter</artifactId>
         </dependency>
         <dependency>
-            <!-- Poll nativo Azure Blob — versão gerenciada pelo BOM -->
             <groupId>org.apache.camel.springboot</groupId>
             <artifactId>camel-azure-storage-blob-starter</artifactId>
         </dependency>
 
-        <!-- ── AWS SDK v2 (S3StorageAdapter) ─────────────────────────────── -->
+        <!-- ── AWS SDK v2 ────────────────────────────────────────────────── -->
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>s3</artifactId>
             <version>2.25.40</version>
         </dependency>
 
-        <!-- ── Azure Blob SDK (AzureBlobStorageAdapter) ──────────────────── -->
+        <!-- ── Azure SDK — versões gerenciadas pelo azure-sdk-bom ────────── -->
         <dependency>
             <groupId>com.azure</groupId>
             <artifactId>azure-storage-blob</artifactId>
-            <version>12.25.1</version>
+        </dependency>
+        <dependency>
+            <groupId>com.azure</groupId>
+            <artifactId>azure-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.azure</groupId>
+            <artifactId>azure-core-http-netty</artifactId>
         </dependency>
 
-        <!-- ── SFTP via JSch (SftpStorageAdapter) ────────────────────────── -->
+        <!-- ── SFTP ──────────────────────────────────────────────────────── -->
         <dependency>
             <groupId>com.github.mwiede</groupId>
             <artifactId>jsch</artifactId>

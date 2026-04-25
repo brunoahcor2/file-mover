@@ -132,11 +132,34 @@ public class StorageRouteUriBuilder {
 
     // ── AZURE BLOB ─────────────────────────────────────────────────────────
 
+//    TODO: remover
+//    private String buildAzureUri(FileMoverProperties.StorageConfig.AzureConfig azure,
+//                                 String role, Long pollDelay) {
+//        StringBuilder uri = new StringBuilder("azure-storage-blob://")
+//                .append(azure.getContainerName())
+//                .append("?credentials=#azureCredentials");
+//
+//        if (azure.getKeyPrefix() != null && !azure.getKeyPrefix().isBlank()) {
+//            uri.append("&prefix=").append(azure.getKeyPrefix());
+//        }
+//
+//        if (pollDelay != null) {
+//            uri.append("&delay=").append(pollDelay);
+//            uri.append("&deleteAfterRead=true");
+//            uri.append("&maxResultsPerPage=10");
+//        }
+//
+//        return uri.toString();
+//    }
+
     private String buildAzureUri(FileMoverProperties.StorageConfig.AzureConfig azure,
                                  String role, Long pollDelay) {
+
+        // O Camel azure-storage-blob aceita connection string direto na URI
+        // via parâmetro accountName + credentialType=CONNECTION_STRING
         StringBuilder uri = new StringBuilder("azure-storage-blob://")
                 .append(azure.getContainerName())
-                .append("?credentials=#azureCredentials");
+                .append("?serviceClient=#azureBlobServiceClient_").append(role);
 
         if (azure.getKeyPrefix() != null && !azure.getKeyPrefix().isBlank()) {
             uri.append("&prefix=").append(azure.getKeyPrefix());
@@ -150,4 +173,5 @@ public class StorageRouteUriBuilder {
 
         return uri.toString();
     }
+
 }
