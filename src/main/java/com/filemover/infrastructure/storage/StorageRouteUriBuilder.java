@@ -16,6 +16,10 @@ import org.springframework.stereotype.Component;
  *   S3    → aws2-s3://
  *   SFTP  → sftp://
  *   AZURE → azure-storage-blob://
+ *
+ * Nota: para o cenário LOCAL → SFTP (e qualquer outro onde o use case
+ * é dono do I/O), a URI de destination é usada apenas pelo Dead Letter
+ * Channel. A rota principal não faz .to(destinationUri).
  */
 @Slf4j
 @Component
@@ -61,11 +65,9 @@ public class StorageRouteUriBuilder {
         };
 
         if (pollDelay != null) {
-            // source: poll ativo com filtro e readLock
             return "file:%s?include=.*\\.txt&readLock=changed&readLockCheckInterval=500&readLockMinAge=500&delete=true&delay=%d"
                     .formatted(dir, pollDelay);
         }
-        // destination / error: apenas gravar
         return "file:%s?autoCreate=true".formatted(dir);
     }
 
@@ -91,12 +93,10 @@ public class StorageRouteUriBuilder {
         }
 
         if (pollDelay != null) {
-            // source: poll, move objeto após consumo
             uri.append("&deleteAfterRead=true");
             uri.append("&delay=").append(pollDelay);
             uri.append("&maxMessagesPerPoll=10");
         } else {
-            // destination / error: apenas gravar
             uri.append("&deleteAfterWrite=false");
         }
 
@@ -106,15 +106,22 @@ public class StorageRouteUriBuilder {
     // ── SFTP ───────────────────────────────────────────────────────────────
 
     private String buildSftpUri(SftpConfig sftp, String role, Long pollDelay) {
-        String path = sftp.getRemoteDir();
+        // Camel SFTP interpreta path sem barra inicial como relativo ao home do usuário.
+        // Barra dupla (//caminho) força path absoluto no servidor.
+        // Ex: remoteDir="/upload" → URI "sftp://user@host:22//upload"
+        String remoteDir = sftp.getRemoteDir();
+        String absolutePath = remoteDir.startsWith("/") ? "/" + remoteDir : remoteDir;
 
         StringBuilder uri = new StringBuilder("sftp://")
                 .append(sftp.getUsername()).append("@")
                 .append(sftp.getHost()).append(":").append(sftp.getPort())
-                .append(path);
+                .append(absolutePath);
 
         uri.append("?password=").append(sftp.getPassword());
         uri.append("&strictHostKeyChecking=no");
+        // Evita o prompt "create known_hosts?" que fazia o Camel responder "no"
+        // e abortar a conexão quando o arquivo ~/.ssh/known_hosts não existe.
+        uri.append("&knownHostsFile=/dev/null");
         uri.append("&disconnect=true");
 
         if (sftp.getPrivateKeyPath() != null && !sftp.getPrivateKeyPath().isBlank()) {
@@ -132,31 +139,8 @@ public class StorageRouteUriBuilder {
 
     // ── AZURE BLOB ─────────────────────────────────────────────────────────
 
-//    TODO: remover
-//    private String buildAzureUri(FileMoverProperties.StorageConfig.AzureConfig azure,
-//                                 String role, Long pollDelay) {
-//        StringBuilder uri = new StringBuilder("azure-storage-blob://")
-//                .append(azure.getContainerName())
-//                .append("?credentials=#azureCredentials");
-//
-//        if (azure.getKeyPrefix() != null && !azure.getKeyPrefix().isBlank()) {
-//            uri.append("&prefix=").append(azure.getKeyPrefix());
-//        }
-//
-//        if (pollDelay != null) {
-//            uri.append("&delay=").append(pollDelay);
-//            uri.append("&deleteAfterRead=true");
-//            uri.append("&maxResultsPerPage=10");
-//        }
-//
-//        return uri.toString();
-//    }
-
     private String buildAzureUri(FileMoverProperties.StorageConfig.AzureConfig azure,
                                  String role, Long pollDelay) {
-
-        // O Camel azure-storage-blob aceita connection string direto na URI
-        // via parâmetro accountName + credentialType=CONNECTION_STRING
         StringBuilder uri = new StringBuilder("azure-storage-blob://")
                 .append(azure.getContainerName())
                 .append("?serviceClient=#azureBlobServiceClient_").append(role);
@@ -173,5 +157,4 @@ public class StorageRouteUriBuilder {
 
         return uri.toString();
     }
-
 }

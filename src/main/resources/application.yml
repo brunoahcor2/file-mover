@@ -36,10 +36,10 @@ file-mover:
       container-name: ${SOURCE_AZURE_CONTAINER:}
       key-prefix: ${SOURCE_AZURE_PREFIX:incoming/}
     sftp:
-      host: ${SOURCE_SFTP_HOST:}
+      host: ${SOURCE_SFTP_HOST:localhost}
       port: ${SOURCE_SFTP_PORT:22}
-      username: ${SOURCE_SFTP_USER:}
-      password: ${SOURCE_SFTP_PASS:}
+      username: ${SOURCE_SFTP_USER:user}
+      password: ${SOURCE_SFTP_PASS:pass}
       remote-dir: ${SOURCE_SFTP_DIR:/upload}
 
   # ── storage: destination ───────────────────────────────────────────────────
@@ -57,11 +57,11 @@ file-mover:
       container-name: ${DEST_AZURE_CONTAINER:}
       key-prefix: ${DEST_AZURE_PREFIX:processed/}
     sftp:
-      host: ${DEST_SFTP_HOST:}
+      host: ${DEST_SFTP_HOST:localhost}
       port: ${DEST_SFTP_PORT:22}
-      username: ${DEST_SFTP_USER:}
-      password: ${DEST_SFTP_PASS:}
-      remote-dir: ${DEST_SFTP_DIR:/processed}
+      username: ${DEST_SFTP_USER:user}
+      password: ${DEST_SFTP_PASS:pass}
+      remote-dir: ${DEST_SFTP_DIR:/upload}
 
   # ── storage: error ─────────────────────────────────────────────────────────
   error:
@@ -78,10 +78,10 @@ file-mover:
       container-name: ${ERROR_AZURE_CONTAINER:}
       key-prefix: ${ERROR_AZURE_PREFIX:error/}
     sftp:
-      host: ${ERROR_SFTP_HOST:}
+      host: ${ERROR_SFTP_HOST:localhost}
       port: ${ERROR_SFTP_PORT:22}
-      username: ${ERROR_SFTP_USER:}
-      password: ${ERROR_SFTP_PASS:}
+      username: ${ERROR_SFTP_USER:user}
+      password: ${ERROR_SFTP_PASS:pass}
       remote-dir: ${ERROR_SFTP_DIR:/error}
 
 # ─── Apache Camel ────────────────────────────────────────────────────────────

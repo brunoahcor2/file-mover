@@ -18,19 +18,34 @@
       ports:
         - "8080:8080"
       environment:
+        # CONFIGURAÇÃO DE FLUXO (Exemplo: LOCAL para SFTP para seu teste)
+        STORAGE_SOURCE_TYPE: LOCAL
+        STORAGE_DEST_TYPE: SFTP
+        STORAGE_ERROR_TYPE: LOCAL
+
+        # DIRETÓRIOS LOCAIS (Volumes mapeados abaixo)
         FILE_MOVER_SOURCE_DIR: /data/source
         FILE_MOVER_DEST_DIR: /data/destination
         FILE_MOVER_ERROR_DIR: /data/error
         FILE_MOVER_POLL_DELAY: 5000
+
+        # CONFIGURAÇÃO SFTP (Apontando para o serviço sftp-server interno)
+        DEST_SFTP_HOST: sftp-server
+        DEST_SFTP_PORT: 22
+        DEST_SFTP_USER: user
+        DEST_SFTP_PASS: pass
+        DEST_SFTP_DIR: /upload
+
+        # AZURE (Utilizando serviço Azurite interno na rede Docker)
+        DEST_AZURE_CONN_STR: "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;"
+        DEST_AZURE_CONTAINER: file-mover-dest
+        DEST_AZURE_PREFIX: processed/
+
+        # VALIDAÇÃO E LOGS
         VALIDATION_SERVICE_URL: http://file-mover:8080
         LOKI_URL: http://loki:3100/loki/api/v1/push
         LOG_FILE_PATH: /logs/file-mover.log
-        STORAGE_SOURCE_TYPE: LOCAL
-        STORAGE_DEST_TYPE: AZURE_BLOB
-        DEST_AZURE_CONTAINER: file-mover-dest
-        DEST_AZURE_PREFIX: processed/
-        STORAGE_ERROR_TYPE: LOCAL
-        DEST_AZURE_CONN_STR: "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;"
+
       volumes:
         - ./data:/data
         - ./logs:/logs
@@ -38,6 +53,8 @@
         azurite:
           condition: service_healthy
         loki:
+          condition: service_started
+        sftp-server:
           condition: service_started
       networks:
         - observability
@@ -65,7 +82,7 @@
         timeout: 3s
         retries: 5
 
-    # ─── LocalStack (Novo serviço na versão corrente) ──────────────────────────
+    # ─── LocalStack (Emulador AWS S3) ──────────────────────────────────────────
     localstack:
       image: localstack/localstack:3.4
       container_name: localstack
@@ -79,13 +96,14 @@
         test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
         interval: 10s
 
-    # ─── SFTP Server (Novo serviço na versão corrente) ──────────────────────────
+    # ─── SFTP Server (Para testes de FTP) ──────────────────────────────────────
     sftp-server:
       image: atmoz/sftp
       container_name: sftp-server
       ports:
         - "2222:22"
-      command: user:pass:1001
+      # Formato: usuario:senha:UID:GID:diretorio_base
+      command: user:pass:1001:1001:upload
       networks:
         - observability
 

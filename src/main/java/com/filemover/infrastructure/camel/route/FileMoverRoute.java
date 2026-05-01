@@ -8,17 +8,6 @@ import org.apache.camel.LoggingLevel;
 import org.apache.camel.builder.RouteBuilder;
 import org.springframework.stereotype.Component;
 
-/**
- * Rota Apache Camel que orquestra o fluxo de movimentação de arquivos.
- *
- * As URIs de source, destination e error são montadas dinamicamente
- * pelo StorageRouteUriBuilder baseado no tipo de provider configurado.
- *
- * Fluxo:
- *   source (LOCAL/S3/SFTP/Azure) → FileTransferProcessor → destination
- *                                          ↓ (erro após retries)
- *                                        error
- */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -51,13 +40,16 @@ public class FileMoverRoute extends RouteBuilder {
                         "File processing failed permanently | file=${header.CamelFileName}")
                 .to(uriBuilder.buildErrorUri());
 
-        // ── Rota principal: source → processor → destination ───────────────
+        // ── Rota principal: source → processor ─────────────────────────────
+        // O FileTransferProcessor é dono de todo o I/O:
+        //   lê do source, valida, grava no destino e remove da origem.
+        // O .to(destinationUri) foi removido para evitar dupla gravação —
+        // o Camel tentaria um segundo upload SFTP após o use case já ter concluído.
         from(uriBuilder.buildSourceUri())
                 .routeId(ROUTE_ID)
                 .log(LoggingLevel.INFO,
                         "File detected | name=${header.CamelFileName} size=${header.CamelFileLength}")
                 .process(fileTransferProcessor)
-                .to(uriBuilder.buildDestinationUri())
                 .log(LoggingLevel.INFO,
                         "File moved successfully | name=${header.CamelFileName}");
     }
